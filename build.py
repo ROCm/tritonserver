@@ -1937,6 +1937,12 @@ def backend_build(
         cmake_script.cmd("git submodule sync")
         cmake_script.cmd("cd ..")
         tensorrtllm_prebuild(cmake_script)
+    elif (be == "onnxruntime") and (FLAGS.enable_rocm):
+        cmake_script.cmd(
+            "git clone --recursive --single-branch --depth=1 -b {} https://github.com/AMD-AI/tritonserver-onnxruntime.git onnxruntime_backend".format(
+                tag
+            )
+        )
     else:
         cmake_script.gitclone(backend_repo(be), tag, backend_repo(be), github_organization)
 
@@ -1960,7 +1966,7 @@ def backend_build(
         cmake_script.cmd("date && hipify-perl -inplace `cat cudafiles.txt ` && date")
         cmake_script.comment("sed substitution for errors in /tmp/tritonbuild/onnxruntime_backend/src/onnxruntime.cc")
 
-        cmake_script.cmd("sed -i \"s/CudaStream()/static_cast<hipStream_t>(CudaStream())/\" /tmp/tritonbuild/onnxruntime_backend/src/onnxruntime.cc")
+        cmake_script.cmd("sed -i \"s/CudaStream()/RocmStream()/\" /tmp/tritonbuild/onnxruntime_backend/src/onnxruntime.cc")
 
         cmake_script.comment()
     cmake_script.cmake(
@@ -2817,9 +2823,9 @@ if __name__ == "__main__":
     # Initialize map of common components and repo-tag for each.
     components = {
         "common": default_repo_tag,
-        "core": default_repo_tag,
-        "backend": "add_migraphx_rocm_eps_hipify",
-        "thirdparty": default_repo_tag,
+        "core": "add_migraphx_rocm_eps_hipify",
+        "backend": "onnxbackend_dev",
+        "thirdparty": "add_migraphx_rocm_eps_hipify",
     }
     for be in FLAGS.repo_tag:
         parts = be.split(":")

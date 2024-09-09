@@ -20,3 +20,23 @@ output [
     label_filename: "densenet_labels.txt"
   }
 ]
+
+optimization {
+    execution_accelerators {
+        gpu_execution_accelerator : [ {
+            name : "migraphx"
+            parameters { key: "precision_mode" value: "FP32" }
+        }]
+    }
+}
+
+instance_group: [
+    {
+        name: "densenet_onnx_0"
+        kind: KIND_GPU
+        count: 2
+        gpus: [
+            0, 1
+        ]
+    }
+]

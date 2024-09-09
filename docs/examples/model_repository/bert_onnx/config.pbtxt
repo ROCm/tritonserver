@@ -1,0 +1,63 @@
+name: "bert_onnx"
+backend: "onnxruntime"
+platform: "onnxruntime_onnx"
+max_batch_size : 8
+dynamic_batching: {
+  preferred_batch_size: [ 4 ]
+}
+input [
+  {
+    name: "input_ids"
+    data_type: TYPE_INT64
+    dims: [ 384 ]
+    reshape { shape: [ 384 ] }
+  },
+  {
+    name: "input_mask"
+    data_type: TYPE_INT64
+    dims: [ 384 ]
+    reshape { shape: [ 384 ] }
+  },
+  {
+    name: "segment_ids"
+    data_type: TYPE_INT64
+    dims: [ 384 ]
+    reshape { shape: [ 384 ] }
+  }
+]
+
+output [
+  {
+    name: "output_start_logits"
+    data_type: TYPE_FP32
+    dims: [ 384 ]
+    reshape { shape: [ 384 ] }
+  },
+    {
+    name: "output_end_logits"
+    data_type: TYPE_FP32
+    dims: [ 384 ]
+    reshape { shape: [ 384 ] }
+  }
+]
+
+
+optimization {
+    execution_accelerators {
+        gpu_execution_accelerator : [ {
+            name : "migraphx"
+            parameters { key: "precision_mode" value: "FP32" }
+        }]
+    }
+}
+
+instance_group: [
+    {
+        name: "bert_onnx_0"
+        kind: KIND_GPU
+        count: 1
+        gpus: [
+            0
+        ]
+    }
+]

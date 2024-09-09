@@ -38,3 +38,13 @@ mv /tmp/inception_v3_2016_08_28_frozen.pb model_repository/inception_graphdef/1/
 mkdir -p model_repository/densenet_onnx/1
 wget -O model_repository/densenet_onnx/1/model.onnx \
      https://contentmamluswest001.blob.core.windows.net/content/14b2744cf8d6418c87ffddc3f3127242/9502630827244d60a1214f250e3bbca7/08aed7327d694b8dbaee2c97b8d0fcba/densenet121-1.2.onnx
+
+# ONNX bert
+mkdir -p model_repository/bert_onnx/1
+wget -O model_repository/bert_onnx/1/model.onnx \
+     https://zenodo.org/records/3733910/files/model.onnx?download=1
+
+# ONNX resnet50
+mkdir -p model_repository/resnet50_onnx/1
+echo "Please download Resnet50 model from ONNX model zoo with git-lfs https://github.com/onnx/models/blob/main/validated/vision/classification/resnet/model/resnet50-v2-7.onnx"
+echo "Copy it to model_repository/resnet50_onnx/1"

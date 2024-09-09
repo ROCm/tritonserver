@@ -1,0 +1,44 @@
+name: "resnet50_onnx"
+backend: "onnxruntime"
+platform: "onnxruntime_onnx"
+max_batch_size : 32
+dynamic_batching: {
+  preferred_batch_size: [ 32 ]
+}
+input [
+  {
+    name: "data"
+    data_type: TYPE_FP32
+    format: FORMAT_NCHW
+    dims: [ 3, 224, 224 ]
+    reshape { shape: [ 3, 224, 224 ] }
+  }
+]
+output [
+  {
+    name: "resnetv24_dense0_fwd"
+    data_type: TYPE_FP32
+    dims: [ 1000 ]
+    reshape { shape: [ 1000 ] }
+  }
+]
+
+optimization {
+    execution_accelerators {
+        gpu_execution_accelerator : [ {
+            name : "migraphx"
+            parameters { key: "precision_mode" value: "FP32" }
+        }]
+    }
+}
+
+instance_group: [
+    {
+        name: "resnet50_onnx_0"
+        kind: KIND_GPU
+        count: 1
+        gpus: [
+            0
+        ]
+    }
+]
