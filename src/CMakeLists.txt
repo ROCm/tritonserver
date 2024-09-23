@@ -71,7 +71,8 @@ endif() # TRITON_ENABLE_GPU
 # ROCM
 #
 if(${TRITON_ENABLE_ROCM})
-  find_package(hip REQUIRED)
+  list(APPEND CMAKE_PREFIX_PATH "/opt/rocm")
+  find_package(hip REQUIRED CONFIG PATHS ${HIP_DIR} ${ROCM_PATH} /opt/rocm)
 endif() # TRITON_ENABLE_ROCM
 
 # libevent
