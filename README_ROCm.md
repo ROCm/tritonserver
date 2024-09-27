@@ -1,5 +1,10 @@
 Triton Inference Server can be executed on AMD GPUs with the PyTorch backend. This enablement on AMD GPUs has been implemented in version 23.10 of Triton Inference Server, and has been tested on AMD MI210, MI250 and MI300x GPUs.
 
+To pull clone the ROCm PyTorch backend execute:
+```
+git clone -b rocm_pytorch_backend https://github.com/ROCm/tritonserver.git
+```
+
 To build the Triton + PyTorch docker container, execute the following command:
 
 ```
