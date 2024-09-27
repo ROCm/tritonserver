@@ -72,7 +72,7 @@ option(TRITON_ENABLE_ASAN "Build with address sanitizer" OFF)
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 if(${TRITON_ENABLE_ROCM})
 set(TRITON_THIRD_PARTY_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING
-    "Tag for AMD-AI/tritonserver-third_party repo")
+	"Tag for ROCm/tritonserver-third_party repo")
 set(TRITON_CORE_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING "Tag for ROCm/tritonserver-core repo")
 else()
 set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING
@@ -122,7 +122,7 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
   repo-third-party
-  GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-third_party.git
+  GIT_REPOSITORY https://github.com/ROCm/tritonserver-third_party.git
   GIT_TAG ${TRITON_THIRD_PARTY_REPO_TAG}
 )
 else()
