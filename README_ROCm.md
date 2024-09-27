@@ -1,6 +1,6 @@
-Triton Inference Server can be executed on AMD GPUs with the vLLM backend. This enablement on AMD GPUs has been implemented in version 23.10 of Triton Inference Server and vLLM version 0.3.3, and has been tested on AMD MI210, MI250 and MI300x GPUs.
+Triton Inference Server can be executed on AMD GPUs with the PyTorch backend. This enablement on AMD GPUs has been implemented in version 23.10 of Triton Inference Server, and has been tested on AMD MI210, MI250 and MI300x GPUs.
 
-To build the Triton + vLLM docker container, execute the following command:
+To build the Triton + PyTorch docker container, execute the following command:
 
 ```
 python3 build.py --no-container-pull --enable-logging --enable-stats \
@@ -9,7 +9,7 @@ python3 build.py --no-container-pull --enable-logging --enable-stats \
 
   --image gpu-base,rocm/pytorch:rocm6.0.2_ubuntu22.04_py3.10_pytorch_2.1.2 \
 
-  --endpoint=http --backend=python --backend=vllm
+  --endpoint=http --backend=pytorch
 ```
 
 If your system uses podman instead of docker, use the build script build-podman.py
