@@ -3012,7 +3012,7 @@ if __name__ == "__main__":
                     "enable_rocm",
                     script_build_dir,
                     script_install_dir,
-                    "https://github.com/AMD-AI",
+                    "https://github.com/ROCm",
                     images,
                     components,
                     library_paths,
