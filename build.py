@@ -80,7 +80,7 @@ TRITON_VERSION_MAP = {
         "py310_23.1.0-1",  # Conda version
         "0.2.1",  # vLLM version
         "6.0.2", #ROCm Version
-        "develop", #MIGraphX Version Tags
+        "rocm-6.0.2", #MIGraphX Version Tags
     )
 }
 
@@ -287,9 +287,8 @@ class BuildScript:
     def cmake(self, args):
         # Pass some additional envvars into cmake...
         env_args = []
-
-        #for k in ("TRT_VERSION", "CMAKE_TOOLCHAIN_FILE", "VCPKG_TARGET_TRIPLET"):
-        #    env_args += [f'"-D{k}={self.envvar_ref(k)}"']
+        for k in ("TRT_VERSION", "CMAKE_TOOLCHAIN_FILE", "VCPKG_TARGET_TRIPLET"):
+            env_args += [f'"-D{k}={self.envvar_ref(k)}"']
         self.cmd(f'cmake {" ".join(env_args)} {" ".join(args)}', check_exitcode=True)
 
     def makeinstall(self, target="install"):
@@ -589,19 +588,14 @@ def backend_cmake_args(images, components, be, install_dir, library_paths):
         cmake_backend_arg(be, "CMAKE_INSTALL_PREFIX", "PATH", install_dir),
         cmake_backend_arg(be, "TRITON_COMMON_REPO_TAG", "STRING", components["common"]),
         cmake_backend_arg(be, "TRITON_CORE_REPO_TAG", "STRING", components["core"]),
-        cmake_backend_arg(
-            be, "TRITON_BACKEND_REPO_TAG", "STRING", components["backend"]
-        ),
+        cmake_backend_arg(be, "TRITON_BACKEND_REPO_TAG", "STRING", components["backend"]),
     ]
 
     cargs.append(cmake_backend_enable(be, "TRITON_ENABLE_GPU", FLAGS.enable_gpu))
     cargs.append(cmake_backend_enable(be, "TRITON_ENABLE_ROCM", FLAGS.enable_rocm))
-    cargs.append(
-        cmake_backend_enable(be, "TRITON_ENABLE_MALI_GPU", FLAGS.enable_mali_gpu)
-    )
+    cargs.append(cmake_backend_enable(be, "TRITON_ENABLE_MALI_GPU", FLAGS.enable_mali_gpu))
     cargs.append(cmake_backend_enable(be, "TRITON_ENABLE_STATS", FLAGS.enable_stats))
-    cargs.append(
-        cmake_backend_enable(be, "TRITON_ENABLE_METRICS", FLAGS.enable_metrics)
+    cargs.append(cmake_backend_enable(be, "TRITON_ENABLE_METRICS", FLAGS.enable_metrics)
     )
 
     # [DLIS-4950] always enable below once Windows image is updated with CUPTI
@@ -646,7 +640,9 @@ def pytorch_cmake_args(images):
             cmake_backend_arg("pytorch", "TRITON_PYTORCH_LIB_PATHS", None, pt_lib_path),
         ]
     else:
-        if "pytorch" in images:
+        if FLAGS.enable_rocm:
+            image = images["gpu-base"]
+        elif "pytorch" in images:
             image = images["pytorch"]
         else:
             image = "nvcr.io/nvidia/pytorch:{}-py3".format(
@@ -659,6 +655,13 @@ def pytorch_cmake_args(images):
         if FLAGS.enable_gpu:
             cargs.append(
                 cmake_backend_enable("pytorch", "TRITON_PYTORCH_ENABLE_TORCHTRT", True)
+            )
+        elif FLAGS.enable_rocm:
+            cargs.append(
+                cmake_backend_arg("pytorch", "CMAKE_PREFIX_PATH", "STRING","`python3 -c 'import torch;print(torch.utils.cmake_prefix_path)'`")
+            )
+            cargs.append(
+                cmake_backend_arg("pytorch", "CMAKE_CXX_COMPILER:PATH", "STRING","/opt/rocm-6.0.2/bin/amdclang++")
             )
         cargs.append(
             cmake_backend_enable("pytorch", "TRITON_ENABLE_NVTX", FLAGS.enable_nvtx)
@@ -1180,7 +1183,7 @@ ARG BASE_IMAGE={}
     # PyTorch and TensorFlow backends need extra CUDA and other
     # dependencies during runtime that are missing in the CPU-only base container.
     # These dependencies must be copied from the Triton Min image.
-    if not (FLAGS.enable_gpu and FLAGS.enable_rocm) and (("pytorch" in backends) or ("tensorflow" in backends)):
+    if (not FLAGS.enable_rocm) and (not FLAGS.enable_gpu and (("pytorch" in backends) or ("tensorflow" in backends))):
         df += """
 ############################################################################
 ##  Triton Min image
@@ -1221,7 +1224,7 @@ COPY --chown=1000:1000 docker/sagemaker/serve /usr/bin/.
 
     # This is required since libcublasLt.so is not present during the build
     # stage of the PyTorch backend
-    if not FLAGS.enable_gpu and ("pytorch" in backends):
+    if (not FLAGS.enable_rocm) and (not FLAGS.enable_gpu and ("pytorch" in backends)):
         df += """
 RUN patchelf --add-needed /usr/local/cuda/lib64/stubs/libcublasLt.so.12 backends/pytorch/libtorch_cuda.so
 """
@@ -1229,6 +1232,63 @@ RUN patchelf --add-needed /usr/local/cuda/lib64/stubs/libcublasLt.so.12 backends
     with open(os.path.join(ddir, dockerfile_name), "w") as dfile:
         dfile.write(df)
 
+def install_vllm():
+    df="""
+ARG BASE_IMAGE="rocm/pytorch:rocm6.0.2_ubuntu22.04_py3.10_pytorch_2.1.2"
+ARG FA_GFX_ARCHS="gfx90a;gfx942"
+ARG FA_BRANCH="3d2b6f5"
+RUN apt-get update && apt-get install -y \
+        curl \
+        ca-certificates \
+        sudo \
+        bzip2 \
+        libx11-6 \
+        build-essential \
+        wget \
+        unzip \
+        nvidia-cuda-toolkit \
+        tmux \
+     && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --no-cache-dir fastapi==0.108.0 ninja==1.11.1.1 tokenizers==0.15.2 pandas==2.2.1
+
+ENV LLVM_SYMBOLIZER_PATH=/opt/rocm/llvm/bin/llvm-symbolizer
+ENV PATH=$PATH:/opt/rocm/bin:/libtorch/bin:
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/:/libtorch/lib:
+ENV CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:/libtorch/include:/libtorch/include/torch/csrc/api/include/:/opt/rocm/include/:
+RUN cd /var/lib/jenkins \
+    && mkdir libs \
+    && cd libs \
+    && git clone https://github.com/ROCm/flash-attention.git \
+    && cd flash-attention \
+    && git checkout ${FA_BRANCH} \
+    && git submodule update --init \
+    && export GPU_ARCHS=${FA_GFX_ARCHS} \
+    && if [ "$BASE_IMAGE" = "rocm/pytorch:rocm5.7_ubuntu22.04_py3.10_pytorch_2.0.1" ]; then \
+        patch /opt/conda/envs/py_3.10/lib/python3.10/site-packages/torch/utils/hipify/hipify_python.py hipify_patch.patch; fi \
+    && python3 setup.py install \
+    && cd ..
+
+RUN python3 -m pip install xformers==0.0.23 --no-deps
+
+# Error related to odd state for numpy 1.20.3 where there is no METADATA etc, but an extra LICENSES_bundled.txt.
+# Manually removed it so that later steps of numpy upgrade can continue
+RUN rm -rf /opt/conda/envs/py_3.9/lib/python3.9/site-packages/numpy-1.20.3.dist-info/
+
+RUN cd /var/lib/jenkins \
+    && wget https://github.com/vllm-project/vllm/archive/refs/tags/v0.3.3.tar.gz \
+    && tar xvf v0.3.3.tar.gz \
+    && cd vllm-0.3.3 \
+    && pip3 install starlette==0.32.0.post1 psutil==5.9.8 sentencepiece==0.2.0 typing-extensions==4.10.0 transformers==4.38.2 uvicorn[standard]==0.28.1 pydantic==2.6.4 prometheus_client==0.20.0 \
+    && bash patch_xformers.rocm.sh \
+    && patch /opt/rocm/include/hip/amd_detail/amd_hip_bf16.h /var/lib/jenkins/vllm-0.3.3/rocm_patch/rocm_bf16.patch \
+    && python3 setup.py install \
+    && cd ..
+
+RUN python3 -m pip install --no-cache-dir ray[all]==2.9.3
+    """
+    return df
 
 def dockerfile_prepare_container_linux(argmap, backends, enable_gpu, enable_rocm, target_machine):
     gpu_enabled = 1 if (enable_gpu or enable_rocm) else 0
@@ -1264,7 +1324,27 @@ ENV LD_LIBRARY_PATH /opt/tritonserver/backends/onnxruntime:${LD_LIBRARY_PATH}
 
     # Necessary for libtorch.so to find correct HPCX libraries
     if "pytorch" in backends:
-        df += """
+        if FLAGS.enable_rocm:
+            df += """
+ENV LD_LIBRARY_PATH /opt/ucx/lib/:${LD_LIBRARY_PATH}
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends patchelf
+
+ARG DOCKER_IMAGE_BLAS_LIB_PATH=/opt/conda/envs/py_3.10/lib
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_gnu_thread.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_def.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_core.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_def.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_gnu_thread.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_avx2.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_core.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_avx2.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_gnu_thread.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_avx512.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_core.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_avx512.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_gnu_thread.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_vml_def.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_intel_thread.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_vml_def.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_core.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_vml_def.so.1
+RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_intel_lp64.so.1 ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_intel_thread.so.1
+"""
+            
+        else:
+            df += """
 ENV LD_LIBRARY_PATH /opt/hpcx/ucc/lib/:/opt/hpcx/ucx/lib/:${LD_LIBRARY_PATH}
 """
 
@@ -1353,7 +1433,8 @@ RUN ln -sf ${_CUDA_COMPAT_PATH}/lib.real ${_CUDA_COMPAT_PATH}/lib \
  && rm -f ${_CUDA_COMPAT_PATH}/lib
 """
     else:
-        df += add_cpu_libs_to_linux_dockerfile(backends, target_machine)
+        if not enable_rocm:
+            df += add_cpu_libs_to_linux_dockerfile(backends, target_machine)
 
     # Add dependencies needed for python backend
     if "python" in backends:
@@ -1426,7 +1507,15 @@ ENV LD_LIBRARY_PATH=/usr/local/tensorrt/lib/:/opt/tritonserver/backends/tensorrt
         # Remove Pip install once vLLM backend moves to Conda environment.
         # [DLIS-5650] Pre-installing torch 2.0.1, since vllm 0.2
         # requires torch >= 2.0.0, but it doesn't work with torch 2.1.0.
-        df += """
+
+        if enable_rocm:
+            df += """
+# install vLLM from source
+"""
+            df += install_vllm()
+
+        else:
+            df += """
 # vLLM needed for vLLM backend
 RUN pip3 install torch==2.0.1 vllm=={}
 """.format(
@@ -1455,6 +1544,13 @@ COPY docker/entrypoint.d/ /opt/nvidia/entrypoint.d/
 COPY docker/cpu_only/ /opt/nvidia/
 ENTRYPOINT ["/opt/nvidia/nvidia_entrypoint.sh"]
 """
+
+    if not enable_rocm:
+        df += """
+COPY docker/cpu_only/ /opt/rocm/
+ENTRYPOINT ["/opt/rocm/rocm_entrypoint.sh"]
+"""
+
 
     df += """
 ENV NVIDIA_BUILD_ID {}
@@ -1902,6 +1998,19 @@ def tensorrtllm_prebuild(cmake_script):
     cmake_script.cmd("mv tensorrtllm/inflight_batcher_llm/cmake tensorrtllm")
     cmake_script.cmd("mv tensorrtllm/inflight_batcher_llm/CMakeLists.txt tensorrtllm")
 
+def flashattn_build(cmake_script,build_dir):
+    FA_BRANCH="3d2b6f5"
+    FA_GFX_ARCHS="GPU_ARCHS=gfx90a;gfx940;gfx941;gfx942"
+    flshattn_dir = os.path.join(build_dir, "flash-attention")
+    cmake_script.cmd("git clone https://github.com/ROCmSoftwarePlatform/flash-attention.git")
+    cmake_script.cwd(flshattn_dir)
+    cmake_script.cmd(["git checkout", FA_BRANCH])
+    cmake_script.cmd("export GPU_ARCHS=\"gfx90a;gfx940;gfx941;gfx942\"")
+    cmake_script.cmd("git submodule update --init")
+    cmake_script.cmd("python3 setup.py install")
+    cmake_script.cwd(build_dir)
+    cmake_script.cmd("python3 -m pip install xformers==0.0.23 --no-deps")
+    
 
 def backend_build(
     be,
@@ -1914,8 +2023,14 @@ def backend_build(
     components,
     library_paths,
 ):
-    repo_build_dir = os.path.join(build_dir, backend_repo(be), "build")
-    repo_install_dir = os.path.join(build_dir, backend_repo(be), "install")
+    if be == "vllm" and FLAGS.enable_rocm:
+        repo_build_dir = os.path.join(build_dir, be)
+    elif (be == "onnxruntime") and (FLAGS.enable_rocm):
+        repo_build_dir = os.path.join(build_dir, backend_repo(be), "build")
+        repo_install_dir = os.path.join(build_dir, backend_repo(be), "install")
+    else:
+        repo_build_dir = os.path.join(build_dir, be, "build")
+        repo_install_dir = os.path.join(build_dir, be, "install")
 
     cmake_script.commentln(8)
     cmake_script.comment(f"'{be}' backend")
@@ -1937,50 +2052,76 @@ def backend_build(
         cmake_script.cmd("git submodule sync")
         cmake_script.cmd("cd ..")
         tensorrtllm_prebuild(cmake_script)
+    elif be == "vllm" and FLAGS.enable_rocm:
+        cmake_script.cmd("export LLVM_SYMBOLIZER_PATH=/opt/rocm/llvm/bin/llvm-symbolizer")
+        cmake_script.cmd("export PATH=$PATH:/opt/rocm/bin:/libtorch/bin:")
+        cmake_script.cmd("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rocm/lib/:/libtorch/lib:")
+        cmake_script.cmd("export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:/libtorch/include:/libtorch/include/torch/csrc/api/include/:/opt/rocm/include/:")
+        flashattn_build(cmake_script,build_dir)
+        cmake_script.cmd("git clone https://github.com/vllm-project/vllm.git vllm".format(tag))
+    elif be == "pytorch" and FLAGS.enable_rocm:
+        cmake_script.gitclone("tritonserver-pytorch", tag, be, github_organization)
     elif (be == "onnxruntime") and (FLAGS.enable_rocm):
-        cmake_script.cmd(
-            "git clone --recursive --single-branch --depth=1 -b {} https://github.com/AMD-AI/tritonserver-onnxruntime.git onnxruntime_backend".format(
-                tag
-            )
-        )
-    else:
-        cmake_script.gitclone(backend_repo(be), tag, backend_repo(be), github_organization)
-
-    if FLAGS.enable_rocm:
         cmake_script.comment("Clone onnxruntime itself.  includes directory is needed for rocm")
         cmake_script.gitclone(be, "", be, "https://github.com/microsoft")
         # cmake_script.cmake (("-DCMAKE_INSTALL_PREFIX:PATH=/opt/tritonserver/backends/onnxruntime/install" ,"-DTRITON_BUILD_ONNXRUNTIME_VERSION=1.14.1", "-DTRITON_BUILD_CONTAINER_VERSION=23.04", ".."))
+        cmake_script.cmd(
+            "git clone --recursive --single-branch --depth=1 -b add_migraphx_rocm_onnxrt_eps https://github.com/AMD-AI/tritonserver-onnxruntime.git onnxruntime_backend")
+    else:
+        cmake_script.gitclone(backend_repo(be), tag, be, github_organization)
 
-    cmake_script.mkdir(repo_build_dir)
-    cmake_script.cwd(repo_build_dir)
-    if FLAGS.enable_rocm:
-        cmake_script.comment("nano for development, cuda for hipify")
-        # cmake_script.cmd("apt install -y cuda nano")
+    if be == "vllm" and FLAGS.enable_rocm:
+        cmake_script.cwd(repo_build_dir)
+        cmake_script.cmd("bash patch_xformers.rocm.sh")
+        cmake_script.cmd("pip3 install -U -r requirements-rocm.txt")
+        #TODO: use 'repo_buid_dir' to point to patch file
+        cmake_script.cmd("patch /opt/rocm/include/hip/amd_detail/amd_hip_bf16.h /tmp/tritonbuild/vllm/rocm_patch/rocm_bf16.patch")
+        cmake_script.cmd("python setup.py install")
+        cmake_script.cwd(build_dir)
+    elif be == "onnxruntime" and FLAGS.enable_rocm:
 
+        cmake_script.mkdir(repo_build_dir)
+        cmake_script.cwd(repo_build_dir)
         cmake_script.comment("")
         cmake_script.comment("Find all the source files containing string \"cuda\", and hipify")
         cmake_script.comment("the \"|| echo...\" prevents exiting the script if grep finds nothing")
         cmake_script.cmd("grep -il cuda `find .. -name *.cc` > cudafiles.txt  || echo \"\"")
         cmake_script.cmd("grep -il cuda `find .. -name *.h` >> cudafiles.txt || echo \"\"")
-    
+        
         cmake_script.cmd("date && hipify-perl -inplace `cat cudafiles.txt ` && date")
         cmake_script.comment("sed substitution for errors in /tmp/tritonbuild/onnxruntime_backend/src/onnxruntime.cc")
 
         cmake_script.cmd("sed -i \"s/CudaStream()/RocmStream()/\" /tmp/tritonbuild/onnxruntime_backend/src/onnxruntime.cc")
-
         cmake_script.comment()
-    cmake_script.cmake(
-        backend_cmake_args(images, components, be, repo_install_dir, library_paths)
-    )
-    cmake_script.makeinstall()
 
-    cmake_script.mkdir(os.path.join(install_dir, "backends"))
-    cmake_script.rmdir(os.path.join(install_dir, "backends", be))
+        cmake_script.cmake(
+            backend_cmake_args(images, components, be, repo_install_dir, library_paths)
+        )
+        cmake_script.makeinstall()
 
-    cmake_script.cpdir(
-        os.path.join(repo_install_dir, "backends", be),
-        os.path.join(install_dir, "backends"),
-    )
+        cmake_script.mkdir(os.path.join(install_dir, "backends"))
+        cmake_script.rmdir(os.path.join(install_dir, "backends", be))
+
+        cmake_script.cpdir(
+            os.path.join(repo_install_dir, "backends", be),
+            os.path.join(install_dir, "backends"),
+        )
+    else:
+        cmake_script.mkdir(repo_build_dir)
+        cmake_script.cwd(repo_build_dir)
+        
+        cmake_script.cmake(
+            backend_cmake_args(images, components, be, repo_install_dir, library_paths)
+        )
+        cmake_script.makeinstall()
+
+        cmake_script.mkdir(os.path.join(install_dir, "backends"))
+        cmake_script.rmdir(os.path.join(install_dir, "backends", be))
+
+        cmake_script.cpdir(
+            os.path.join(repo_install_dir, "backends", be),
+            os.path.join(install_dir, "backends"),
+        )
 
     cmake_script.comment()
     cmake_script.comment(f"end '{be}' backend")
@@ -2821,12 +2962,21 @@ if __name__ == "__main__":
         OVERRIDE_BACKEND_CMAKE_FLAGS[be][parts[0]] = parts[1]
 
     # Initialize map of common components and repo-tag for each.
-    components = {
-        "common": default_repo_tag,
-        "core": "add_migraphx_rocm_eps_hipify",
-        "backend": "onnxbackend_dev",
-        "thirdparty": "add_migraphx_rocm_eps_hipify",
-    }
+    if FLAGS.enable_rocm:
+        components = {
+            "common": default_repo_tag,
+            "core": "add_migraphx_rocm_eps_hipify",
+            "backend": "onnxbackend_dev",
+            "thirdparty": "add_migraphx_rocm_eps_hipify",
+        }
+    else:
+        components = {
+            "common": default_repo_tag,
+            "core": default_repo_tag,
+            "backend": default_repo_tag,
+            "thirdparty": default_repo_tag,
+        }
+
     for be in FLAGS.repo_tag:
         parts = be.split(":")
         fail_if(len(parts) != 2, "--repo-tag must specify <component-name>:<repo-tag>")
@@ -2909,6 +3059,18 @@ if __name__ == "__main__":
                     script_build_dir,
                     script_install_dir,
                     github_organization,
+                )
+            elif be == "pytorch" and FLAGS.enable_rocm:
+                backend_build(
+                    be,
+                    cmake_script,
+                    "enable_rocm",
+                    script_build_dir,
+                    script_install_dir,
+                    "https://github.com/AMD-AI",
+                    images,
+                    components,
+                    library_paths,
                 )
             elif be == "onnxruntime" and FLAGS.enable_rocm:
                 # pull the branch of onnxruntime we're working on

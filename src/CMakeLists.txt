@@ -43,19 +43,29 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/triton-inference-server/common.git
   GIT_TAG ${TRITON_COMMON_REPO_TAG}
 )
+if(${TRITON_ENABLE_ROCM})
 FetchContent_Declare(
   repo-core
-  # GIT_REPOSITORY https://github.com/triton-inference-server/core.git
   GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-core.git
   GIT_TAG ${TRITON_CORE_REPO_TAG}
 )
 FetchContent_Declare(
   repo-backend
-  # Workaround to make tritonserver binary build
-  # GIT_REPOSITORY https://github.com/triton-inference-server/backend.git
   GIT_REPOSITORY https://github.com/AMD-AI/tritonserver_backend.git
   GIT_TAG ${TRITON_BACKEND_REPO_TAG}
 )
+else()
+  FetchContent_Declare(
+    repo-core
+    GIT_REPOSITORY https://github.com/triton-inference-server/core.git
+    GIT_TAG ${TRITON_CORE_REPO_TAG}
+  )
+  FetchContent_Declare(
+    repo-backend
+    GIT_REPOSITORY https://github.com/triton-inference-server/backend.git
+    GIT_TAG ${TRITON_BACKEND_REPO_TAG}
+  )
+endif()
 
 if(TRITON_ENABLE_GRPC)
   set(TRITON_COMMON_ENABLE_PROTOBUF ON)
@@ -74,7 +84,8 @@ endif() # TRITON_ENABLE_GPU
 # ROCM
 #
 if(${TRITON_ENABLE_ROCM})
-  find_package(hip REQUIRED)
+  list(APPEND CMAKE_PREFIX_PATH "/opt/rocm")
+  find_package(hip REQUIRED CONFIG PATHS ${HIP_DIR} ${ROCM_PATH} /opt/rocm)
 endif() # TRITON_ENABLE_ROCM
 
 # libevent

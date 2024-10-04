@@ -69,11 +69,19 @@ option(TRITON_ENABLE_TENSORRT "Include TensorRT backend in server" OFF)
 option(TRITON_ENABLE_ASAN "Build with address sanitizer" OFF)
 
 # Repo tags
-set(TRITON_THIRD_PARTY_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING
-    "Tag for triton-inference-server/third_party repo")
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
-set(TRITON_CORE_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING "Tag for triton-inference-server/core repo")
+if(${TRITON_ENABLE_ROCM})
+  set(TRITON_THIRD_PARTY_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING
+      "Tag for AMD-AI/tritonserver-third_party repo")
+  set(TRITON_CORE_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING "Tag for AMD-AI/tritonserver-core repo")
 set(TRITON_BACKEND_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING "Tag for triton-inference-server/backend repo")
+else()
+  set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING
+    "Tag for triton-inference-server/third_party repo")
+  set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
+  set(TRITON_BACKEND_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/backend repo")
+endif()
+
 
 # Third-party location
 set(TRITON_THIRD_PARTY_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/third-party" CACHE STRING "Location of third-party build")
@@ -108,18 +116,29 @@ endif()
 #
 include(FetchContent)
 
+if(${TRITON_ENABLE_ROCM})
 FetchContent_Declare(
   repo-core
-  # GIT_REPOSITORY https://github.com/triton-inference-server/core.git
   GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-core.git
   GIT_TAG ${TRITON_CORE_REPO_TAG}
 )
 FetchContent_Declare(
   repo-third-party
-  # GIT_REPOSITORY https://github.com/triton-inference-server/third_party.git
   GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-third_party.git
   GIT_TAG ${TRITON_THIRD_PARTY_REPO_TAG}
 )
+else()
+  FetchContent_Declare(
+    repo-core
+    GIT_REPOSITORY https://github.com/triton-inference-server/core.git
+    GIT_TAG ${TRITON_CORE_REPO_TAG}
+  )
+  FetchContent_Declare(
+    repo-third-party
+    GIT_REPOSITORY https://github.com/triton-inference-server/third_party.git
+    GIT_TAG ${TRITON_THIRD_PARTY_REPO_TAG}
+  )
+endif()
 
 # Some libs are installed to ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/{LIB}/lib64 instead
 # of ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/{LIB}/lib on Centos
