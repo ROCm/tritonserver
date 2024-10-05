@@ -44,16 +44,16 @@ FetchContent_Declare(
   GIT_TAG ${TRITON_COMMON_REPO_TAG}
 )
 if(${TRITON_ENABLE_ROCM})
-FetchContent_Declare(
-  repo-core
-  GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-core.git
-  GIT_TAG ${TRITON_CORE_REPO_TAG}
-)
-FetchContent_Declare(
-  repo-backend
-  GIT_REPOSITORY https://github.com/AMD-AI/tritonserver_backend.git
-  GIT_TAG ${TRITON_BACKEND_REPO_TAG}
-)
+  FetchContent_Declare(
+    repo-core
+    GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-core.git
+    GIT_TAG ${TRITON_CORE_REPO_TAG}
+  )
+  FetchContent_Declare(
+    repo-backend
+    GIT_REPOSITORY https://github.com/AMD-AI/tritonserver_backend.git
+    GIT_TAG ${TRITON_BACKEND_REPO_TAG}
+  )
 else()
   FetchContent_Declare(
     repo-core

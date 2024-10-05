@@ -74,7 +74,7 @@ if(${TRITON_ENABLE_ROCM})
   set(TRITON_THIRD_PARTY_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING
       "Tag for AMD-AI/tritonserver-third_party repo")
   set(TRITON_CORE_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING "Tag for AMD-AI/tritonserver-core repo")
-set(TRITON_BACKEND_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING "Tag for triton-inference-server/backend repo")
+  set(TRITON_BACKEND_REPO_TAG "add_migraphx_rocm_eps_hipify" CACHE STRING "Tag for triton-inference-server/backend repo")
 else()
   set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING
     "Tag for triton-inference-server/third_party repo")
@@ -117,16 +117,16 @@ endif()
 include(FetchContent)
 
 if(${TRITON_ENABLE_ROCM})
-FetchContent_Declare(
-  repo-core
-  GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-core.git
-  GIT_TAG ${TRITON_CORE_REPO_TAG}
-)
-FetchContent_Declare(
-  repo-third-party
-  GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-third_party.git
-  GIT_TAG ${TRITON_THIRD_PARTY_REPO_TAG}
-)
+  FetchContent_Declare(
+    repo-core
+    GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-core.git
+    GIT_TAG ${TRITON_CORE_REPO_TAG}
+  )
+  FetchContent_Declare(
+    repo-third-party
+    GIT_REPOSITORY https://github.com/AMD-AI/tritonserver-third_party.git
+    GIT_TAG ${TRITON_THIRD_PARTY_REPO_TAG}
+  )
 else()
   FetchContent_Declare(
     repo-core
