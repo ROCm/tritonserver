@@ -1108,8 +1108,11 @@ RUN apt-get update && \
 RUN pip3 install --upgrade pip && \
     pip3 install --upgrade wheel setuptools==69.5.1 docker
 
-# Ensure CMake is available (ROCm PyTorch images have it but may need PATH update)
-RUN which cmake || (apt-get update && apt-get install -y cmake)
+# Install CMake 3.31.8 (required for python backend)
+RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.31.8/cmake-3.31.8-linux-x86_64.tar.gz && \
+    tar -xzf cmake-3.31.8-linux-x86_64.tar.gz -C /usr/local --strip-components=1 && \
+    rm cmake-3.31.8-linux-x86_64.tar.gz && \
+    cmake --version
 
 # Install boost version >= 1.78 for boost::span
 # Current libboost-dev apt packages are < 1.78, so install from tar.gz
@@ -1729,7 +1732,7 @@ def create_build_dockerfiles(
             else:
                 base_image = "rocm/onnxruntime:rocm7.0_ub22.04_ort1.22_torch2.8.0"
         else:
-            base_image = "rocm/pytorch:rocm7.0_ubuntu22.04_py3.10_pytorch_release_2.8.0"
+            base_image = "rocm/pytorch:rocm7.1_ubuntu22.04_py3.10_pytorch_release_2.8.0"
     else:
         base_image = "ubuntu:22.04"
 
@@ -1764,7 +1767,7 @@ def create_build_dockerfiles(
                 else:
                     gpu_base_image = "rocm/onnxruntime:rocm7.0_ub22.04_ort1.22_torch2.8.0"
             else:
-                gpu_base_image = "rocm/pytorch:rocm7.0_ubuntu22.04_py3.10_pytorch_release_2.8.0"
+                gpu_base_image = "rocm/pytorch:rocm7.1_ubuntu22.04_py3.10_pytorch_release_2.8.0"
         else:
             gpu_base_image = "nvcr.io/nvidia/tritonserver:{}-py3-min".format(
                 FLAGS.upstream_container_version
@@ -2122,6 +2125,10 @@ def backend_build(
         cmake_script.cmd("git clone https://github.com/vllm-project/vllm.git vllm".format(tag))
     elif be == "pytorch" and FLAGS.enable_rocm:
         cmake_script.gitclone("tritonserver-pytorch", tag, be, github_organization)
+    elif be == "python" and FLAGS.enable_rocm:
+        # Use AMD-specific python_backend fork for ROCm support
+        cmake_script.gitclone(
+            "python_backend", "tritonserver-integration", "python", "https://github.com/stbaione")
     elif (be == "onnxruntime") and (FLAGS.enable_rocm):
         cmake_script.gitclone(
             "tritonserver-onnxruntime", "rocm7.0.1_ort1.22", "onnxruntime_backend", "https://github.com/ROCm")
