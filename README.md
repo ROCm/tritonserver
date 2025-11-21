@@ -139,9 +139,6 @@ perf_analyzer -m <model_name>  --input-data=<your input data file>
 - **ROCm Support**: Multiple ROCm versions planned (currently working on 7.1.0)
 
 
-### Contributing
-
-For ROCm-specific issues or contributions, please ensure you test on AMD hardware with supported ROCm versions. Refer to the Backend Development Status section for currently tested ROCm, ONNX Runtime, and MIGraphX version combinations.
 
 ---
 
