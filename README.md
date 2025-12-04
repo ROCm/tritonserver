@@ -56,7 +56,7 @@ The following table lists the ROCm-enabled Triton Inference Server component rep
 | Third Party | [ROCm/tritonserver-third_party](https://github.com/ROCm/tritonserver-third_party) | `add_migraphx_rocm_eps_hipify` |
 | PyTorch Backend | [ROCm/tritonserver-pytorch](https://github.com/ROCm/tritonserver-pytorch) | `enable_rocm` |
 | ONNX Runtime Backend | [ROCm/tritonserver-onnxruntime](https://github.com/ROCm/tritonserver-onnxruntime) | `rocm7.0.1_ort1.22` |
-| Python Backend | [stbaione/python_backend](https://github.com/stbaione/python_backend) | `tritonserver-integration` |
+| Python Backend | [stbaione/python_backend](https://github.com/stbaione/python_backend) | `r23.10-amd-port` |
 
 
 ## Build Triton Inference Server with python backend 
