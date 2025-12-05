@@ -1490,7 +1490,7 @@ RUN apt-get update && \
             libpython3-dev && \
     pip3 install --upgrade pip && \
     pip3 install --upgrade wheel setuptools==69.5.1 && \
-    pip3 install --upgrade numpy && \
+    pip3 install --force-reinstall "numpy<2" && \
     rm -rf /var/lib/apt/lists/*
 """
     # Add dependencies needed for tensorrtllm backend
