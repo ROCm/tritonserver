@@ -50,12 +50,12 @@ The following table lists the ROCm-enabled Triton Inference Server component rep
 
 | Component | Repository | Branch |
 |-----------|------------|--------|
-| Server | [ROCm/tritonserver](https://github.com/ROCm/tritonserver) | `rocm_python_backend` |
-| Core | [ROCm/tritonserver-core](https://github.com/ROCm/tritonserver-core) | `add_migraphx_rocm_eps_hipify` |
-| Backend | [ROCm/tritonserver_backend](https://github.com/ROCm/tritonserver_backend) | `onnxbackend_dev` |
-| Third Party | [ROCm/tritonserver-third_party](https://github.com/ROCm/tritonserver-third_party) | `add_migraphx_rocm_eps_hipify` |
-| PyTorch Backend | [ROCm/tritonserver-pytorch](https://github.com/ROCm/tritonserver-pytorch) | `enable_rocm` |
-| ONNX Runtime Backend | [ROCm/tritonserver-onnxruntime](https://github.com/ROCm/tritonserver-onnxruntime) | `rocm7.0.1_ort1.22` |
+| Server | [ROCm/triton-inference-server-server](https://github.com/ROCm/triton-inference-server-server) | `rocm_python_backend` |
+| Core | [ROCm/triton-inference-server-core](https://github.com/ROCm/triton-inference-server-core) | `add_migraphx_rocm_eps_hipify` |
+| Backend | [ROCm/triton-inference-server-backend](https://github.com/ROCm/triton-inference-server-backend) | `onnxbackend_dev` |
+| Third Party | [ROCm/triton-inference-server-third_party](https://github.com/ROCm/triton-inference-server-third_party) | `add_migraphx_rocm_eps_hipify` |
+| PyTorch Backend | [ROCm/triton-inference-server-pytorch_backend](https://github.com/ROCm/triton-inference-server-pytorch_backend) | `enable_rocm` |
+| ONNX Runtime Backend | [ROCm/triton-inference-server-onnxruntime_backend](https://github.com/ROCm/triton-inference-server-onnxruntime_backend) | `rocm7.0.1_ort1.22` |
 | Python Backend | [stbaione/python_backend](https://github.com/stbaione/python_backend) | `r23.10-amd-port` |
 
 
@@ -103,6 +103,7 @@ docker run \
   --name tritonserver_container \
   --device=/dev/kfd \
   --device=/dev/dri \
+  --ipc=host \
   -it \
   -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/envs/py_3.10/lib:/opt/tritonserver/backends/python:/opt/rocm-7.1.0/lib \
   -p 8000:8000 \

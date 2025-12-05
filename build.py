@@ -2124,14 +2124,14 @@ def backend_build(
         flashattn_build(cmake_script,build_dir)
         cmake_script.cmd("git clone https://github.com/vllm-project/vllm.git vllm".format(tag))
     elif be == "pytorch" and FLAGS.enable_rocm:
-        cmake_script.gitclone("tritonserver-pytorch", tag, be, github_organization)
+        cmake_script.gitclone("triton-inference-server-pytorch_backend", tag, be, github_organization)
     elif be == "python" and FLAGS.enable_rocm:
         # Use AMD-specific python_backend fork for ROCm support
         cmake_script.gitclone(
             "python_backend", "r23.10-amd-port", "python", "https://github.com/stbaione")
     elif (be == "onnxruntime") and (FLAGS.enable_rocm):
         cmake_script.gitclone(
-            "tritonserver-onnxruntime", "rocm7.0.1_ort1.22", "onnxruntime_backend", "https://github.com/ROCm")
+            "triton-inference-server-onnxruntime_backend", "rocm7.0.1_ort1.22", "onnxruntime_backend", "https://github.com/ROCm")
     else:
         cmake_script.gitclone(backend_repo(be), tag, be, github_organization)
 
