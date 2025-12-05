@@ -2128,7 +2128,7 @@ def backend_build(
     elif be == "python" and FLAGS.enable_rocm:
         # Use AMD-specific python_backend fork for ROCm support
         cmake_script.gitclone(
-            "python_backend", "r23.10-amd-port", "python", "https://github.com/stbaione")
+            "triton-inference-server-python_backend", "r23.10-amd-port", "python", "https://github.com/ROCm")
     elif (be == "onnxruntime") and (FLAGS.enable_rocm):
         cmake_script.gitclone(
             "triton-inference-server-onnxruntime_backend", "rocm7.0.1_ort1.22", "onnxruntime_backend", "https://github.com/ROCm")

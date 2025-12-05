@@ -56,7 +56,7 @@ The following table lists the ROCm-enabled Triton Inference Server component rep
 | Third Party | [ROCm/triton-inference-server-third_party](https://github.com/ROCm/triton-inference-server-third_party) | `add_migraphx_rocm_eps_hipify` |
 | PyTorch Backend | [ROCm/triton-inference-server-pytorch_backend](https://github.com/ROCm/triton-inference-server-pytorch_backend) | `enable_rocm` |
 | ONNX Runtime Backend | [ROCm/triton-inference-server-onnxruntime_backend](https://github.com/ROCm/triton-inference-server-onnxruntime_backend) | `rocm7.0.1_ort1.22` |
-| Python Backend | [stbaione/python_backend](https://github.com/stbaione/python_backend) | `r23.10-amd-port` |
+| Python Backend | [ROCm/triton-inference-server-python_backend](https://github.com/ROCm/triton-inference-server-python_backend/tree/r23.10-amd-port) | `r23.10-amd-port` |
 
 
 ## Build Triton Inference Server with python backend 
@@ -75,6 +75,8 @@ The following instructions are for building on **Ubuntu 22.04** with ROCm 7.1.0.
 Build the Triton Server with the ONNX Runtime backend enabled:
 
 ```bash
+git clone -b rocm_python_backend https://github.com/ROCm/triton-inference-server-server.git
+cd triton-inference-server-server
 python3 build.py \
   --no-container-pull \
   --enable-logging \
