@@ -973,7 +973,7 @@ def install_dcgm_libraries(dcgm_version, target_machine):
     else:
         if target_machine == "aarch64":
             return """
-ENV DCGM_VERSION {}
+ENV DCGM_VERSION={}
 # Install DCGM. Steps from https://developer.nvidia.com/dcgm#Downloads
 RUN curl -o /tmp/cuda-keyring.deb \
     https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/sbsa/cuda-keyring_1.0-1_all.deb \
@@ -984,7 +984,7 @@ RUN curl -o /tmp/cuda-keyring.deb \
             )
         else:
             return """
-ENV DCGM_VERSION {}
+ENV DCGM_VERSION={}
 # Install DCGM. Steps from https://developer.nvidia.com/dcgm#Downloads
 RUN curl -o /tmp/cuda-keyring.deb \
     https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb \
@@ -1022,7 +1022,7 @@ RUN wget "{miniconda_url}" -O miniconda.sh -q && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     /opt/conda/bin/conda clean -afy
-ENV PATH /opt/conda/bin:${{PATH}}
+ENV PATH=/opt/conda/bin:${{PATH}}
 """
 
 
@@ -1139,8 +1139,8 @@ ENV HIP_PATH=/opt/rocm
 ENV CMAKE_PREFIX_PATH=/opt/rocm:/opt/rocm/lib/cmake:${CMAKE_PREFIX_PATH}
 """
     df += """
-ENV TRITON_SERVER_VERSION ${TRITON_VERSION}
-ENV NVIDIA_TRITON_SERVER_VERSION ${TRITON_CONTAINER_VERSION}
+ENV TRITON_SERVER_VERSION=${TRITON_VERSION}
+ENV NVIDIA_TRITON_SERVER_VERSION=${TRITON_CONTAINER_VERSION}
 """
 
     # Copy in the triton source. We remove existing contents first in
@@ -1188,8 +1188,8 @@ COPY build/ci /workspace
 
 WORKDIR /workspace
 
-ENV TRITON_SERVER_VERSION ${TRITON_VERSION}
-ENV NVIDIA_TRITON_SERVER_VERSION ${TRITON_CONTAINER_VERSION}
+ENV TRITON_SERVER_VERSION=${TRITON_VERSION}
+ENV NVIDIA_TRITON_SERVER_VERSION=${TRITON_CONTAINER_VERSION}
 """
 
     with open(os.path.join(ddir, dockerfile_name), "w") as dfile:
@@ -1329,8 +1329,8 @@ def dockerfile_prepare_container_linux(argmap, backends, enable_gpu, enable_rocm
     df = """
 ARG TRITON_VERSION
 ARG TRITON_CONTAINER_VERSION
-ENV TRITON_SERVER_VERSION ${TRITON_VERSION}
-ENV NVIDIA_TRITON_SERVER_VERSION ${TRITON_CONTAINER_VERSION}
+ENV TRITON_SERVER_VERSION=${TRITON_VERSION}
+ENV NVIDIA_TRITON_SERVER_VERSION=${TRITON_CONTAINER_VERSION}
 # Allow pip to install packages system-wide (needed for Debian 12+)
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 """
@@ -1344,23 +1344,23 @@ LABEL com.nvidia.tritonserver.version="${TRITON_SERVER_VERSION}"
     """
 
     df += """
-ENV PATH /opt/tritonserver/bin:${PATH}
+ENV PATH=/opt/tritonserver/bin:${PATH}
 # Remove once https://github.com/openucx/ucx/pull/9148 is available
 # in the min container.
-ENV UCX_MEM_EVENTS no
+ENV UCX_MEM_EVENTS=no
 """
 
     # TODO Remove once the ORT-OpenVINO "Exception while Reading network" is fixed
     if "onnxruntime" in backends:
         df += """
-ENV LD_LIBRARY_PATH /opt/tritonserver/backends/onnxruntime:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/opt/tritonserver/backends/onnxruntime:${LD_LIBRARY_PATH}
 """
 
     # Necessary for libtorch.so to find correct HPCX libraries
     if "pytorch" in backends:
         if FLAGS.enable_rocm:
             df += """
-ENV LD_LIBRARY_PATH /opt/ucx/lib/:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/opt/ucx/lib/:${LD_LIBRARY_PATH}
 RUN apt-get update && \
     apt-get install -y --no-install-recommends patchelf
 
@@ -1379,7 +1379,7 @@ RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_intel_lp64.so.1 $
             
         else:
             df += """
-ENV LD_LIBRARY_PATH /opt/hpcx/ucc/lib/:/opt/hpcx/ucx/lib/:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/opt/hpcx/ucc/lib/:/opt/hpcx/ucx/lib/:${LD_LIBRARY_PATH}
 """
 
     backend_dependencies = ""
@@ -1395,11 +1395,11 @@ ENV LD_LIBRARY_PATH /opt/hpcx/ucc/lib/:/opt/hpcx/ucx/lib/:${LD_LIBRARY_PATH}
         backend_dependencies += " openssh-server"
 
     df += """
-ENV TF_ADJUST_HUE_FUSED         1
-ENV TF_ADJUST_SATURATION_FUSED  1
-ENV TF_ENABLE_WINOGRAD_NONFUSED 1
-ENV TF_AUTOTUNE_THRESHOLD       2
-ENV TRITON_SERVER_GPU_ENABLED    {gpu_enabled}
+ENV TF_ADJUST_HUE_FUSED=1
+ENV TF_ADJUST_SATURATION_FUSED=1
+ENV TF_ENABLE_WINOGRAD_NONFUSED=1
+ENV TF_AUTOTUNE_THRESHOLD=2
+ENV TRITON_SERVER_GPU_ENABLED={gpu_enabled}
 
 # Create a user that can be used to run triton as
 # non-root. Make sure that this user to given ID 1000. All server
@@ -1443,7 +1443,7 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* && \
     rm -rf /var/lib/apt/lists/*
 
 # Set TCMALLOC_RELEASE_RATE for users setting LD_PRELOAD with tcmalloc
-ENV TCMALLOC_RELEASE_RATE 200
+ENV TCMALLOC_RELEASE_RATE=200
 """.format(
         gpu_enabled=gpu_enabled, backend_dependencies=backend_dependencies
     )
@@ -1596,7 +1596,7 @@ ENTRYPOINT ["/opt/rocm/rocm_entrypoint.sh"]
 
 
     df += """
-ENV NVIDIA_BUILD_ID {}
+ENV NVIDIA_BUILD_ID="{}"
 LABEL com.nvidia.build.id={}
 LABEL com.nvidia.build.ref={}
 """.format(
@@ -1645,7 +1645,7 @@ COPY --from=min_container /usr/lib/{libs_arch}-linux-gnu/libcudnn.so.8 /usr/lib/
 RUN apt-get update && \
         apt-get install -y --no-install-recommends openmpi-bin patchelf
 
-ENV LD_LIBRARY_PATH /usr/local/cuda/targets/{cuda_arch}-linux/lib:/usr/local/cuda/lib64/stubs:${{LD_LIBRARY_PATH}}
+ENV LD_LIBRARY_PATH=/usr/local/cuda/targets/{cuda_arch}-linux/lib:/usr/local/cuda/lib64/stubs:${{LD_LIBRARY_PATH}}
 """.format(
             cuda_arch=cuda_arch, libs_arch=libs_arch
         )
@@ -1681,8 +1681,8 @@ FROM ${{BASE_IMAGE}}
 ARG TRITON_VERSION
 ARG TRITON_CONTAINER_VERSION
 
-ENV TRITON_SERVER_VERSION ${{TRITON_VERSION}}
-ENV NVIDIA_TRITON_SERVER_VERSION ${{TRITON_CONTAINER_VERSION}}
+ENV TRITON_SERVER_VERSION=${{TRITON_VERSION}}
+ENV NVIDIA_TRITON_SERVER_VERSION=${{TRITON_CONTAINER_VERSION}}
 LABEL com.nvidia.tritonserver.version="${{TRITON_SERVER_VERSION}}"
 
 RUN setx path "%path%;C:\\opt\\tritonserver\\bin"
@@ -1703,7 +1703,7 @@ COPY --chown=1000:1000 NVIDIA_Deep_Learning_Container_License.pdf .
 """
     df += """
 ENTRYPOINT []
-ENV NVIDIA_BUILD_ID {}
+ENV NVIDIA_BUILD_ID="{}"
 LABEL com.nvidia.build.id={}
 LABEL com.nvidia.build.ref={}
 """.format(
