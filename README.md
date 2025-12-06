@@ -40,7 +40,7 @@ This repository contains ROCm-enabled builds of Triton Inference Server for AMD 
 - **vLLM Backend** - checkout other branches
 - **PyTorch Backend** - checkout other branches
 - **ONNX Runtime Backend** - checkout other branches
-- **Python Backend** - **WIP**
+- **Python Backend**
 
 ### ROCm-Enabled Repository Branches
 
@@ -72,7 +72,7 @@ The following instructions are for building on **Ubuntu 22.04** with ROCm 7.1.0.
 
 #### Step 1: Build Triton Server with Python Backend
 
-Build the Triton Server with the ONNX Runtime backend enabled:
+Build the Triton Server with the python backend enabled:
 
 ```bash
 git clone -b rocm_python_backend https://github.com/ROCm/triton-inference-server-server.git
