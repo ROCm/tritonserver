@@ -120,7 +120,7 @@ ENV PATH=/opt/rocm/bin:${PATH}
 ENV LD_LIBRARY_PATH=/opt/rocm/lib:${LD_LIBRARY_PATH}
 
 # build MIGraphX from source
-RUN git clone https://github.com/ROCm/AMDMIGraphX.git --recursive -b concat_ai && \
+RUN git clone https://github.com/ROCm/AMDMIGraphX.git --recursive -b concat_ai && ls && \
     cd AMDMIGraphX && \
     pip3 install --prefix /usr/local https://github.com/RadeonOpenCompute/rbuild/archive/master.tar.gz && \
     rbuild build -d depend -B build -DMIGRAPHX_ENABLE_PYTHON=OFF -DGPU_TARGETS=gfx942 2>&1 | tee migraphx_build.log && \
@@ -132,8 +132,8 @@ ENV ORT_MIGRAPHX_MODEL_CACHE_PATH=/models
 ENV ORT_MIGRAPHX_MODEL_PATH=/models
 
 # build onnxruntime with MIGraphX EP from source
-RUN git clone https://github.com/ROCm/onnxruntime.git --recursive -b rocm7.1_internal_testing && ls && \
-    cd onnxruntime && ls && \
+RUN git clone https://github.com/ROCm/onnxruntime.git --recursive -b add_dynamic_batch &&  ls && \
+    cd onnxruntime && \
     pip install numpy packaging && \
     ./build.sh --config Release --allow_running_as_root --rocm_home /opt/rocm --use_migraphx --migraphx_home /opt/rocm --skip_tests --parallel --enable_pybind --build_wheel 2>&1 | tee onnxrt_build.log && \
     pip install ./build/Linux/Release/dist/*.whl --force-reinstall && \
