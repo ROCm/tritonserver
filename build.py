@@ -1725,7 +1725,7 @@ def create_build_dockerfiles(
     elif FLAGS.enable_rocm:
         if "onnxruntime" in backends:
             if FLAGS.linux_distro == "debian":
-                base_image = "local/rocm7.0_debian12_ort1.22_py310"
+                base_image = "local/rocm7.1.1_debian12_ort1.23_py310"
             else:
                 base_image = "rocm/onnxruntime:rocm7.0_ub22.04_ort1.22_torch2.8.0"
         else:
@@ -1760,7 +1760,7 @@ def create_build_dockerfiles(
         elif FLAGS.enable_rocm:
             if "onnxruntime" in backends:
                 if FLAGS.linux_distro == "debian":
-                    gpu_base_image = "local/rocm7.0_debian12_ort1.22_py310"
+                    gpu_base_image = "local/rocm7.1.1_debian12_ort1.23_py310"
                 else:
                     gpu_base_image = "rocm/onnxruntime:rocm7.0_ub22.04_ort1.22_torch2.8.0"
             else:
@@ -2121,10 +2121,10 @@ def backend_build(
         flashattn_build(cmake_script,build_dir)
         cmake_script.cmd("git clone https://github.com/vllm-project/vllm.git vllm".format(tag))
     elif be == "pytorch" and FLAGS.enable_rocm:
-        cmake_script.gitclone("triton-inference-server-pytorch_backend", tag, be, github_organization)
+        cmake_script.gitclone("tritonserver-pytorch", tag, be, github_organization)
     elif (be == "onnxruntime") and (FLAGS.enable_rocm):
         cmake_script.gitclone(
-            "triton-inference-server-onnxruntime_backend", "rocm7.0.1_ort1.22", "onnxruntime_backend", "https://github.com/ROCm")
+            "tritonserver-onnxruntime", "rocm7.1.1_ort1.23", "onnxruntime_backend", "https://github.com/ROCm")
     else:
         cmake_script.gitclone(backend_repo(be), tag, be, github_organization)
 
