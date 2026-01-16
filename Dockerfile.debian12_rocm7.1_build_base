@@ -132,7 +132,7 @@ ENV ORT_MIGRAPHX_MODEL_CACHE_PATH=/models
 ENV ORT_MIGRAPHX_MODEL_PATH=/models
 
 # build onnxruntime with MIGraphX EP from source
-RUN git clone https://github.com/ROCm/onnxruntime.git --recursive -b add_dynamic_batch &&  ls && \
+RUN git clone https://github.com/ROCm/onnxruntime.git --recursive -b add_padded_batch && ls && \
     cd onnxruntime && \
     pip install numpy packaging && \
     ./build.sh --config Release --allow_running_as_root --rocm_home /opt/rocm --use_migraphx --migraphx_home /opt/rocm --skip_tests --parallel --enable_pybind --build_wheel 2>&1 | tee onnxrt_build.log && \
