@@ -127,9 +127,9 @@ RUN git clone https://github.com/ROCm/AMDMIGraphX.git --recursive -b concat_ai &
     cd build && \
     make -j$(nproc) package && dpkg -i *.deb
 
-ENV MIGRAPHX_MLIR_USE_SPECIFIC_OPS=attention,dot,fused_dot
-ENV ORT_MIGRAPHX_MODEL_CACHE_PATH=/models
-ENV ORT_MIGRAPHX_MODEL_PATH=/models
+ENV MIGRAPHX_MLIR_USE_SPECIFIC_OPS=attention,dot
+ENV MIGRAPHX_ENABLE_MLIR_GEG_FUSION=1
+ENV MIGRAPHX_ENABLE_REWRITE_DOT=1
 
 # build onnxruntime with MIGraphX EP from source
 RUN git clone https://github.com/ROCm/onnxruntime.git --recursive -b add_padded_batch && ls && \
