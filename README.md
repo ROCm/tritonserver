@@ -36,100 +36,190 @@
 
 This repository contains ROCm-enabled builds of Triton Inference Server for AMD GPUs. The following backends are available or in development:
 
-- **ONNX Runtime Backend** - Fully functional with ROCm 7.0 and MIGraphX acceleration
+
 - **vLLM Backend** - checkout other branches
 - **PyTorch Backend** - checkout other branches
+- **ONNX Runtime Backend** 
+- **Python Backend**
 
-> **Note**: Triton Server with ONNX Runtime backend supports both **Ubuntu** and **Debian** distributions. 
+### ROCm-Enabled Repository Branches
 
-## Build Triton Inference Server with onnxruntime backend 
+The following table lists the ROCm-enabled Triton Inference Server component repositories. All components are based on **Triton Inference Server r23.10** as of now. Upgrading to recent triton inference server is WIP.
 
-### On Debian 12
+> **Note**: These repositories and branches are temporary during active development. We plan to clean up, merge branches, and upgrade to a newer version of Triton Inference Server in the future.
 
-The following instructions are for building on **Debian 12** with ROCm 7.0.1.
+| Component | Repository | Branch |
+|-----------|------------|--------|
+| Server | [ROCm/triton-inference-server-server](https://github.com/ROCm/triton-inference-server-server) | `rocm_python_backend` |
+| Core | [ROCm/triton-inference-server-core](https://github.com/ROCm/triton-inference-server-core) | `add_migraphx_rocm_eps_hipify` |
+| Backend | [ROCm/triton-inference-server-backend](https://github.com/ROCm/triton-inference-server-backend) | `onnxbackend_dev` |
+| Third Party | [ROCm/triton-inference-server-third_party](https://github.com/ROCm/triton-inference-server-third_party) | `add_migraphx_rocm_eps_hipify` |
+| PyTorch Backend | [ROCm/triton-inference-server-pytorch_backend](https://github.com/ROCm/triton-inference-server-pytorch_backend) | `enable_rocm` |
+| ONNX Runtime Backend | [ROCm/triton-inference-server-onnxruntime_backend](https://github.com/ROCm/triton-inference-server-onnxruntime_backend) | `rocm7.0.1_ort1.22` |
+| Python Backend | [ROCm/triton-inference-server-python_backend](https://github.com/ROCm/triton-inference-server-python_backend/tree/r23.10-amd-port) | `r23.10-amd-port` |
 
-#### Prerequisites
 
-- Docker installed and running
-- AMD GPU with ROCm support
-- ROCm 7.0.1 or compatible version installed on the host
-
-#### Step 1: Build the ROCm Base Image
-
-First, create the base Docker image that includes Debian 12, ROCm 7.0.1, Python 3.10, and ONNX Runtime with ROCm support:
-
-```bash
-cd /path/to/tritonserver
-bash build_debian_rocm_base.sh
-```
-
-This script builds the `local/rocm7.0_debian12_ort1.22_py310` base image, which serves as the foundation for:
-- Build base environment
-- ONNX Runtime build image
-- Runtime Triton Server build image
-
-#### Step 2: Build Triton Server with ONNX Runtime Backend
-
-Build the Triton Server with the ONNX Runtime backend enabled:
-
-```bash
-python3 build.py \
-  --no-container-pull \
-  --enable-logging \
-  --enable-stats \
-  --enable-tracing \
-  --enable-rocm \
-  --linux-distro debian \
-  --enable-metrics \
-  --verbose \
-  --endpoint=grpc \
-  --endpoint=http \
-  --backend=onnxruntime \
-  --library-paths=../onnxruntime_backend/
-```
-
-**Build Options Explained:**
-- `--enable-rocm`: Enable ROCm support
-- `--linux-distro debian`: Use Debian 12 as the base OS
-- `--endpoint=grpc --endpoint=http`: Enable both HTTP and gRPC inference protocols
-- `--backend=onnxruntime`: Build with ONNX Runtime backend
-
+## Build Triton Inference Server with python backend 
 
 ### On Ubuntu 22.04
 
-The following instructions are for building on **Ubuntu 22.04** with ROCm 7.0.0.
-
 #### Prerequisites
 
 - Docker installed and running
 - AMD GPU with ROCm support
-- ROCm 7.0.0 or compatible version installed on the host
+- ROCm 7.1 or compatible version installed on the host
 
-#### Step 1: Build Triton Server with ONNX Runtime Backend
-
-Build the Triton Server with the ONNX Runtime backend enabled:
+The following instructions are for building on **Ubuntu 22.04** with ROCm 7.1.
 
 ```bash
+git clone -b rocm_python_backend https://github.com/ROCm/triton-inference-server-server.git
+cd triton-inference-server-server
 python3 build.py \
   --no-container-pull \
   --enable-logging \
   --enable-stats \
   --enable-tracing \
   --enable-rocm \
-  --linux-distro ubuntu \
+  --enable-metrics \
+  --verbose \
+  --endpoint=grpc \
+  --endpoint=http \
+  --backend=python \
+  --linux-distro=ubuntu \
+  --library-paths=../python_backend/
+```
+
+**Build Options Explained:**
+- `--enable-rocm`: Enable ROCm support
+- `--endpoint=grpc --endpoint=http`: Enable both HTTP and gRPC inference protocols
+- `--backend=python`: Build with python backend
+
+
+### On Debian 12
+
+#### Prerequisites
+
+- Docker installed and running
+- AMD GPU with ROCm support
+- ROCm 7.2 or compatible version installed on the host
+
+The following instructions are for building on **Debian 12** with ROCm 7.2.
+
+Step1: build base docker image with Debian12+ROCm7.2+vLLM deps+vLLM
+```bash
+git clone -b update_rocm7.1 https://github.com/ROCm/triton-inference-server-server.git
+cd triton-inference-server-server
+bash build_debian12_rocm_72_vllm_bash.sh
+```
+
+Step2: build tritonserver docker image for python backend
+```bash
+cd triton-inference-server-server
+python3 build.py \
+  --no-container-pull \
+  --enable-logging \
+  --enable-stats \
+  --enable-tracing \
+  --enable-rocm \
+  --enable-metrics \
+  --verbose \
+  --endpoint=grpc \
+  --endpoint=http \
+  --backend=python \
+  --linux-distro=debian \
+  --library-paths=../python_backend/
+```
+
+**Build Options Explained:**
+- `--enable-rocm`: Enable ROCm support
+- `--linux-distro`: Build on Debian 12 OS
+- `--endpoint=grpc --endpoint=http`: Enable both HTTP and gRPC inference protocols
+- `--backend=python`: Build with python backend
+
+
+
+## Build Triton Inference Server with onnxruntime backend 
+
+### On Ubuntu 22.04
+
+#### Prerequisites
+
+- Docker installed and running
+- AMD GPU with ROCm support
+- ROCm 7.1 or compatible version installed on the host
+
+The following instructions are for building on **Ubuntu 22.04** with ROCm 7.1.
+
+Build the Triton Server with the onnxruntime backend enabled:
+
+```bash
+git clone -b rocm_python_backend https://github.com/ROCm/triton-inference-server-server.git
+cd triton-inference-server-server
+python3 build.py \
+  --no-container-pull \
+  --enable-logging \
+  --enable-stats \
+  --enable-tracing \
+  --enable-rocm \
   --enable-metrics \
   --verbose \
   --endpoint=grpc \
   --endpoint=http \
   --backend=onnxruntime \
+  --linux-distro=ubuntu \
   --library-paths=../onnxruntime_backend/
 ```
 
 **Build Options Explained:**
 - `--enable-rocm`: Enable ROCm support
-- `--linux-distro ubuntu`: Use Ubuntu 22.04 as the base OS
 - `--endpoint=grpc --endpoint=http`: Enable both HTTP and gRPC inference protocols
-- `--backend=onnxruntime`: Build with ONNX Runtime backend
+- `--backend=onnxruntime`: Build with python backend
+
+
+### On Debian 12
+
+#### Prerequisites
+
+- Docker installed and running
+- AMD GPU with ROCm support
+- ROCm 7.1 or compatible version installed on the host
+
+The following instructions are for building on **Debian 12** with ROCm 7.1.
+
+Build the Triton Server with the onnxruntime backend enabled:
+
+Step1: build ROCm base docker image with Debian12+ROCm7.1+onnxruntime+MIGraphX
+```bash
+git clone -b update_rocm7.1 https://github.com/ROCm/triton-inference-server-server.git
+cd triton-inference-server-server
+bash build_debian12_rocm_71_onnxruntime_base.sh
+```
+
+Step2: build tritonserver docker image for onnxruntime backend
+```bash
+cd triton-inference-server-server
+python3 build.py \
+  --no-container-pull \
+  --enable-logging \
+  --enable-stats \
+  --enable-tracing \
+  --enable-rocm \
+  --enable-metrics \
+  --verbose \
+  --endpoint=grpc \
+  --endpoint=http \
+  --backend=onnxruntime \
+  --linux-distro=debian \
+  --library-paths=../onnxruntime_backend/
+```
+
+**Build Options Explained:**
+- `--enable-rocm`: Enable ROCm support
+- `--linux-distro`: Build on Debian 12 OS
+- `--endpoint=grpc --endpoint=http`: Enable both HTTP and gRPC inference protocols
+- `--backend=onnxruntime`: Build with python backend
+
+
 
 ## Run Triton Server
 
@@ -140,13 +230,14 @@ docker run \
   --name tritonserver_container \
   --device=/dev/kfd \
   --device=/dev/dri \
+  --ipc=host \
   -it \
-  -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/envs/py_3.10/lib:/opt/tritonserver/backends/onnxruntime:/opt/rocm-7.0.1/lib \
+  -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/envs/py_3.11/lib:/opt/tritonserver/backends/python:/opt/rocm/lib \
   -p 8000:8000 \
   -p 8001:8001 \
   -p 8002:8002 \
   --net=host \
-  -v /path/to/your/model_repository:/models \
+  -v /path/to/your/model_repository/on/host:/models \
   tritonserver \
   tritonserver --model-repository=/models --exit-on-error=false
 ```
@@ -154,7 +245,7 @@ docker run \
 **Important Parameters:**
 - `--device=/dev/kfd --device=/dev/dri`: Grant access to AMD GPU devices
 - `-p 8000:8000 -p 8001:8001 -p 8002:8002`: Expose HTTP (8000), gRPC (8001), and metrics (8002) ports
-- `-v /path/to/your/model_repository:/models`: Mount your model repository where your onnx checkpoints located. **Please make sure you only have model checkpoints and model config file under /path/to/your/model_repository**
+- `-v /path/to/your/model_repository/on/host:/models`: Mount your model repository where your python model file and config located. **Please make sure you only have model checkpoints and model config file under /path/to/your/model_repository/on/host**
 
 #### Testing with Performance Analyzer
 
@@ -167,21 +258,15 @@ docker run -it --rm --net=host \
   /bin/bash
 
 # Inside the container, run performance analyzer
-perf_analyzer -m <model_name>  --input-data=random
+perf_analyzer -m <model_name>  --input-data=<your input data file>
 ```
 
 ## Backend Development Status
 
-### ONNX Runtime Backend 
-- **ROCm Support**: Multiple ROCm versions planned (currently tested with 7.0.1)
-- **ONNX Runtime Support**: Multiple versions planned (currently tested with 1.22.1)
-- **MIGraphX Support**: Version varies with ROCm version
-- **Acceleration**: MIGraphX execution provider
+### Python Backend 
+- **ROCm Support**: Multiple ROCm versions planned (currently working on 7.1.0)
 
 
-### Contributing
-
-For ROCm-specific issues or contributions, please ensure you test on AMD hardware with supported ROCm versions. Refer to the Backend Development Status section for currently tested ROCm, ONNX Runtime, and MIGraphX version combinations.
 
 ---
 

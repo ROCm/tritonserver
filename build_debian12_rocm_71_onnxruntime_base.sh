@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Build and export Debian 12 + ROCm 7.0 + Python 3.10 base image
+# Build and export Debian 12 + ROCm 7.0 + Python 3.10 + onnxruntime image
 # This base image is used by all Triton build stages
 #
 
 set -e
 
 IMAGE_NAME="local/rocm7.1.1_debian12_ort1.23_py310"
-DOCKERFILE="Dockerfile.debian12_rocm7.1_build_base"
+DOCKERFILE="Dockerfile.debian12_rocm7.1_onnxruntime"
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

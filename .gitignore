@@ -6,3 +6,4 @@ __pycache__
 tmp
 *.log
 /docs/examples/model_repository
+*.tar

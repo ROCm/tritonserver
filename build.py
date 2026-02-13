@@ -973,7 +973,7 @@ def install_dcgm_libraries(dcgm_version, target_machine):
     else:
         if target_machine == "aarch64":
             return """
-ENV DCGM_VERSION {}
+ENV DCGM_VERSION={}
 # Install DCGM. Steps from https://developer.nvidia.com/dcgm#Downloads
 RUN curl -o /tmp/cuda-keyring.deb \
     https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/sbsa/cuda-keyring_1.0-1_all.deb \
@@ -984,7 +984,7 @@ RUN curl -o /tmp/cuda-keyring.deb \
             )
         else:
             return """
-ENV DCGM_VERSION {}
+ENV DCGM_VERSION={}
 # Install DCGM. Steps from https://developer.nvidia.com/dcgm#Downloads
 RUN curl -o /tmp/cuda-keyring.deb \
     https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb \
@@ -1022,7 +1022,7 @@ RUN wget "{miniconda_url}" -O miniconda.sh -q && \
     find /opt/conda/ -follow -type f -name '*.a' -delete && \
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     /opt/conda/bin/conda clean -afy
-ENV PATH /opt/conda/bin:${{PATH}}
+ENV PATH=/opt/conda/bin:${{PATH}}
 """
 
 
@@ -1108,15 +1108,22 @@ RUN apt-get update && \
 RUN pip3 install --upgrade pip && \
     pip3 install --upgrade wheel setuptools==69.5.1 docker
 
-# Ensure CMake is available (ROCm PyTorch images have it but may need PATH update)
-RUN which cmake || (apt-get update && apt-get install -y cmake)
+# Install CMake 3.31.8 (required for python backend)
+RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.31.8/cmake-3.31.8-linux-x86_64.tar.gz && \
+    tar -xzf cmake-3.31.8-linux-x86_64.tar.gz -C /usr/local --strip-components=1 && \
+    rm cmake-3.31.8-linux-x86_64.tar.gz && \
+    cmake --version
 
-# Install boost version >= 1.78 for boost::span
-# Current libboost-dev apt packages are < 1.78, so install from tar.gz
-RUN wget -O /tmp/boost.tar.gz \
+# Install boost version >= 1.78 for boost::span (required by triton-core)
+# Base images (e.g. Debian/Ubuntu) may have older libboost-dev; remove it first so
+# FindBoost only sees our 1.80 headers.
+RUN rm -rf /usr/include/boost && \
+    wget -q -O /tmp/boost.tar.gz \
         https://sourceforge.net/projects/boost/files/boost/1.80.0/boost_1_80_0.tar.gz/download && \
     (cd /tmp && tar xzf boost.tar.gz) && \
-    mv /tmp/boost_1_80_0/boost /usr/include/boost
+    mv /tmp/boost_1_80_0/boost /usr/include/boost && \
+    rm -rf /tmp/boost.tar.gz /tmp/boost_1_80_0 && \
+    (grep -q "1_80\|108000" /usr/include/boost/version.hpp && echo "Boost 1.80 installed" || (echo "Boost install check failed" && exit 1))
 """
 
         if FLAGS.enable_gpu:
@@ -1136,8 +1143,8 @@ ENV HIP_PATH=/opt/rocm
 ENV CMAKE_PREFIX_PATH=/opt/rocm:/opt/rocm/lib/cmake:${CMAKE_PREFIX_PATH}
 """
     df += """
-ENV TRITON_SERVER_VERSION ${TRITON_VERSION}
-ENV NVIDIA_TRITON_SERVER_VERSION ${TRITON_CONTAINER_VERSION}
+ENV TRITON_SERVER_VERSION=${TRITON_VERSION}
+ENV NVIDIA_TRITON_SERVER_VERSION=${TRITON_CONTAINER_VERSION}
 """
 
     # Copy in the triton source. We remove existing contents first in
@@ -1185,8 +1192,8 @@ COPY build/ci /workspace
 
 WORKDIR /workspace
 
-ENV TRITON_SERVER_VERSION ${TRITON_VERSION}
-ENV NVIDIA_TRITON_SERVER_VERSION ${TRITON_CONTAINER_VERSION}
+ENV TRITON_SERVER_VERSION=${TRITON_VERSION}
+ENV NVIDIA_TRITON_SERVER_VERSION=${TRITON_CONTAINER_VERSION}
 """
 
     with open(os.path.join(ddir, dockerfile_name), "w") as dfile:
@@ -1326,8 +1333,8 @@ def dockerfile_prepare_container_linux(argmap, backends, enable_gpu, enable_rocm
     df = """
 ARG TRITON_VERSION
 ARG TRITON_CONTAINER_VERSION
-ENV TRITON_SERVER_VERSION ${TRITON_VERSION}
-ENV NVIDIA_TRITON_SERVER_VERSION ${TRITON_CONTAINER_VERSION}
+ENV TRITON_SERVER_VERSION=${TRITON_VERSION}
+ENV NVIDIA_TRITON_SERVER_VERSION=${TRITON_CONTAINER_VERSION}
 # Allow pip to install packages system-wide (needed for Debian 12+)
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 """
@@ -1341,23 +1348,23 @@ LABEL com.nvidia.tritonserver.version="${TRITON_SERVER_VERSION}"
     """
 
     df += """
-ENV PATH /opt/tritonserver/bin:${PATH}
+ENV PATH=/opt/tritonserver/bin:${PATH}
 # Remove once https://github.com/openucx/ucx/pull/9148 is available
 # in the min container.
-ENV UCX_MEM_EVENTS no
+ENV UCX_MEM_EVENTS=no
 """
 
     # TODO Remove once the ORT-OpenVINO "Exception while Reading network" is fixed
     if "onnxruntime" in backends:
         df += """
-ENV LD_LIBRARY_PATH /opt/tritonserver/backends/onnxruntime:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/opt/tritonserver/backends/onnxruntime:${LD_LIBRARY_PATH}
 """
 
     # Necessary for libtorch.so to find correct HPCX libraries
     if "pytorch" in backends:
         if FLAGS.enable_rocm:
             df += """
-ENV LD_LIBRARY_PATH /opt/ucx/lib/:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/opt/ucx/lib/:${LD_LIBRARY_PATH}
 RUN apt-get update && \
     apt-get install -y --no-install-recommends patchelf
 
@@ -1376,7 +1383,7 @@ RUN patchelf --add-needed ${DOCKER_IMAGE_BLAS_LIB_PATH}/libmkl_intel_lp64.so.1 $
             
         else:
             df += """
-ENV LD_LIBRARY_PATH /opt/hpcx/ucc/lib/:/opt/hpcx/ucx/lib/:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/opt/hpcx/ucc/lib/:/opt/hpcx/ucx/lib/:${LD_LIBRARY_PATH}
 """
 
     backend_dependencies = ""
@@ -1392,11 +1399,11 @@ ENV LD_LIBRARY_PATH /opt/hpcx/ucc/lib/:/opt/hpcx/ucx/lib/:${LD_LIBRARY_PATH}
         backend_dependencies += " openssh-server"
 
     df += """
-ENV TF_ADJUST_HUE_FUSED         1
-ENV TF_ADJUST_SATURATION_FUSED  1
-ENV TF_ENABLE_WINOGRAD_NONFUSED 1
-ENV TF_AUTOTUNE_THRESHOLD       2
-ENV TRITON_SERVER_GPU_ENABLED    {gpu_enabled}
+ENV TF_ADJUST_HUE_FUSED=1
+ENV TF_ADJUST_SATURATION_FUSED=1
+ENV TF_ENABLE_WINOGRAD_NONFUSED=1
+ENV TF_AUTOTUNE_THRESHOLD=2
+ENV TRITON_SERVER_GPU_ENABLED={gpu_enabled}
 
 # Create a user that can be used to run triton as
 # non-root. Make sure that this user to given ID 1000. All server
@@ -1440,7 +1447,7 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* && \
     rm -rf /var/lib/apt/lists/*
 
 # Set TCMALLOC_RELEASE_RATE for users setting LD_PRELOAD with tcmalloc
-ENV TCMALLOC_RELEASE_RATE 200
+ENV TCMALLOC_RELEASE_RATE=200
 """.format(
         gpu_enabled=gpu_enabled, backend_dependencies=backend_dependencies
     )
@@ -1487,8 +1494,12 @@ RUN apt-get update && \
             libpython3-dev && \
     pip3 install --upgrade pip && \
     pip3 install --upgrade wheel setuptools==69.5.1 && \
-    pip3 install --upgrade numpy && \
+    pip3 install --force-reinstall "numpy<2" && \
     rm -rf /var/lib/apt/lists/*
+# Ensure numpy is built for the interpreter used by the Python backend stub
+# (e.g. /usr/bin/python3); base images (e.g. vLLM) may have numpy built for
+# another Python, causing undefined symbol PyObject_SelfIter on 3.10.
+RUN /usr/bin/python3 -m pip install --force-reinstall "numpy<2" 2>/dev/null || true
 """
     # Add dependencies needed for tensorrtllm backend
     if "tensorrtllm" in backends:
@@ -1585,15 +1596,16 @@ COPY docker/cpu_only/ /opt/nvidia/
 ENTRYPOINT ["/opt/nvidia/nvidia_entrypoint.sh"]
 """
 
-    if not enable_rocm:
+    if enable_rocm:
         df += """
 COPY docker/cpu_only/ /opt/rocm/
-ENTRYPOINT ["/opt/rocm/rocm_entrypoint.sh"]
+RUN chmod +x /opt/rocm/amd_entrypoint.sh
+ENTRYPOINT ["/opt/rocm/amd_entrypoint.sh"]
 """
 
 
     df += """
-ENV NVIDIA_BUILD_ID {}
+ENV NVIDIA_BUILD_ID="{}"
 LABEL com.nvidia.build.id={}
 LABEL com.nvidia.build.ref={}
 """.format(
@@ -1642,7 +1654,7 @@ COPY --from=min_container /usr/lib/{libs_arch}-linux-gnu/libcudnn.so.8 /usr/lib/
 RUN apt-get update && \
         apt-get install -y --no-install-recommends openmpi-bin patchelf
 
-ENV LD_LIBRARY_PATH /usr/local/cuda/targets/{cuda_arch}-linux/lib:/usr/local/cuda/lib64/stubs:${{LD_LIBRARY_PATH}}
+ENV LD_LIBRARY_PATH=/usr/local/cuda/targets/{cuda_arch}-linux/lib:/usr/local/cuda/lib64/stubs:${{LD_LIBRARY_PATH}}
 """.format(
             cuda_arch=cuda_arch, libs_arch=libs_arch
         )
@@ -1678,8 +1690,8 @@ FROM ${{BASE_IMAGE}}
 ARG TRITON_VERSION
 ARG TRITON_CONTAINER_VERSION
 
-ENV TRITON_SERVER_VERSION ${{TRITON_VERSION}}
-ENV NVIDIA_TRITON_SERVER_VERSION ${{TRITON_CONTAINER_VERSION}}
+ENV TRITON_SERVER_VERSION=${{TRITON_VERSION}}
+ENV NVIDIA_TRITON_SERVER_VERSION=${{TRITON_CONTAINER_VERSION}}
 LABEL com.nvidia.tritonserver.version="${{TRITON_SERVER_VERSION}}"
 
 RUN setx path "%path%;C:\\opt\\tritonserver\\bin"
@@ -1700,7 +1712,7 @@ COPY --chown=1000:1000 NVIDIA_Deep_Learning_Container_License.pdf .
 """
     df += """
 ENTRYPOINT []
-ENV NVIDIA_BUILD_ID {}
+ENV NVIDIA_BUILD_ID="{}"
 LABEL com.nvidia.build.id={}
 LABEL com.nvidia.build.ref={}
 """.format(
@@ -1723,13 +1735,18 @@ def create_build_dockerfiles(
             FLAGS.upstream_container_version
         )
     elif FLAGS.enable_rocm:
-        if "onnxruntime" in backends:
-            if FLAGS.linux_distro == "debian":
+        if FLAGS.linux_distro == "debian":
+            if "python" in backends:
+                base_image = "local/debian12_rocm7.2_vllm"
+            elif "onnxruntime" in backends:
                 base_image = "local/rocm7.1.1_debian12_ort1.23_py310"
             else:
-                base_image = "rocm/onnxruntime:rocm7.0_ub22.04_ort1.22_torch2.8.0"
+                base_image = "local/debian12_rocm7.2_vllm"
         else:
-            base_image = "rocm/pytorch:rocm7.0_ubuntu22.04_py3.10_pytorch_release_2.8.0"
+            if "onnxruntime" in backends:
+                base_image = "rocm/onnxruntime:rocm7.0_ub22.04_ort1.22_torch2.8.0"
+            else:
+                base_image = "rocm/pytorch:rocm7.1_ubuntu22.04_py3.10_pytorch_release_2.8.0"
     else:
         base_image = "ubuntu:22.04"
 
@@ -1764,7 +1781,7 @@ def create_build_dockerfiles(
                 else:
                     gpu_base_image = "rocm/onnxruntime:rocm7.0_ub22.04_ort1.22_torch2.8.0"
             else:
-                gpu_base_image = "rocm/pytorch:rocm7.0_ubuntu22.04_py3.10_pytorch_release_2.8.0"
+                gpu_base_image = "rocm/pytorch:rocm7.1_ubuntu22.04_py3.10_pytorch_release_2.8.0"
         else:
             gpu_base_image = "nvcr.io/nvidia/tritonserver:{}-py3-min".format(
                 FLAGS.upstream_container_version
@@ -2121,10 +2138,14 @@ def backend_build(
         flashattn_build(cmake_script,build_dir)
         cmake_script.cmd("git clone https://github.com/vllm-project/vllm.git vllm".format(tag))
     elif be == "pytorch" and FLAGS.enable_rocm:
-        cmake_script.gitclone("tritonserver-pytorch", tag, be, github_organization)
+        cmake_script.gitclone("triton-inference-server-pytorch_backend", tag, be, github_organization)
+    elif be == "python" and FLAGS.enable_rocm:
+        # Use AMD-specific python_backend fork for ROCm support
+        cmake_script.gitclone(
+            "triton-inference-server-python_backend", "r23.10-amd-port", "python", "https://github.com/ROCm")
     elif (be == "onnxruntime") and (FLAGS.enable_rocm):
         cmake_script.gitclone(
-            "tritonserver-onnxruntime", "rocm7.1.1_ort1.23", "onnxruntime_backend", "https://github.com/ROCm")
+            "triton-inference-server-onnxruntime_backend", "rocm7.1.1_ort1.23", "onnxruntime_backend", "https://github.com/ROCm")
     else:
         cmake_script.gitclone(backend_repo(be), tag, be, github_organization)
 
@@ -2728,7 +2749,8 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default="ubuntu",
-        help="Linux distro to use for build.",
+        choices=["ubuntu", "debian"],
+        help="Linux distro to use for build. Currently supports onnxruntime and python backends.",
     )
     parser.add_argument(
         "--enable-mali-gpu",
