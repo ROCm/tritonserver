@@ -10,9 +10,9 @@ cd "${SCRIPT_DIR}"
 
 # --- Step 1: Build local/debian12_rocm7.2 ---
 echo "========================================"
-echo "Building local/debian12_rocm7.2"
+echo "Building localhost/debian12_rocm7.2"
 echo "========================================"
-docker build -t local/debian12_rocm7.2 -f Dockerfile.debian12_rocm7.2 .
+docker build -t localhost/debian12_rocm7.2 -f Dockerfile.debian12_rocm7.2 .
 echo ""
 
-docker images | grep -E "local/debian12_rocm7.2" || true
+docker images | grep -E "localhost/debian12_rocm7.2" || true

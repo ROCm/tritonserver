@@ -14,25 +14,25 @@ cd "${SCRIPT_DIR}"
 
 # --- Step 1: Build local/debian12_rocm7.2 ---
 echo "========================================"
-echo "Step 1/3: Building local/debian12_rocm7.2"
+echo "Step 1/3: Building localhost/debian12_rocm7.2"
 echo "========================================"
-docker build -t local/debian12_rocm7.2 -f Dockerfile.debian12_rocm7.2 .
+docker build -t localhost/debian12_rocm7.2 -f Dockerfile.debian12_rocm7.2 .
 echo ""
 
 # --- Step 2: Build local/debian12_rocm7.2_vllm_base ---
 echo "========================================"
-echo "Step 2/3: Building local/debian12_rocm7.2_vllm_base"
+echo "Step 2/3: Building localhost/debian12_rocm7.2_vllm_base"
 echo "========================================"
-docker build -t local/debian12_rocm7.2_vllm_base -f Dockerfile.debian12_rocm7.2_vllm_base .
+docker build -t localhost/debian12_rocm7.2_vllm_base -f Dockerfile.debian12_rocm7.2_vllm_base .
 echo ""
 
 # --- Step 3: Build local/debian12_rocm7.2_vllm (vLLM from git) ---
 echo "========================================"
-echo "Step 3/3: Building local/debian12_rocm7.2_vllm (REMOTE_VLLM=1)"
+echo "Step 3/3: Building localhost/debian12_rocm7.2_vllm (REMOTE_VLLM=1)"
 echo "========================================"
-docker build -t local/debian12_rocm7.2_vllm \
+docker build -t localhost/debian12_rocm7.2_vllm \
   --build-arg REMOTE_VLLM=1 \
-  --build-arg BASE_IMAGE=local/debian12_rocm7.2_vllm_base \
+  --build-arg BASE_IMAGE=localhost/debian12_rocm7.2_vllm_base \
   -f Dockerfile.debian12_rocm7.2_vllm \
   .
 echo ""

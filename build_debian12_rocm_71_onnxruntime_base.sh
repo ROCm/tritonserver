@@ -6,7 +6,7 @@
 
 set -e
 
-IMAGE_NAME="local/rocm7.1.1_debian12_ort1.23_py310"
+IMAGE_NAME="localhost/debian12_rocm7.1_ort1.23_py310"
 DOCKERFILE="Dockerfile.debian12_rocm7.1_onnxruntime"
 
 # Get script directory

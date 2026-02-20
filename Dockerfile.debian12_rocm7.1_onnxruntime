@@ -119,11 +119,15 @@ ENV HIP_PATH=/opt/rocm
 ENV PATH=/opt/rocm/bin:${PATH}
 ENV LD_LIBRARY_PATH=/opt/rocm/lib:${LD_LIBRARY_PATH}
 
-# build MIGraphX from source
+# build MIGraphX from source (retry rbuild on transient download errors e.g. IncompleteRead for rocMLIR)
 RUN git clone https://github.com/ROCm/AMDMIGraphX.git --recursive -b concat_ai && ls && \
     cd AMDMIGraphX && \
     pip3 install --prefix /usr/local https://github.com/RadeonOpenCompute/rbuild/archive/master.tar.gz && \
-    rbuild build -d depend -B build -DMIGRAPHX_ENABLE_PYTHON=OFF -DGPU_TARGETS=gfx942 2>&1 | tee migraphx_build.log && \
+    (for i in 1 2 3 4 5; do \
+      rbuild build -d depend -B build -DMIGRAPHX_ENABLE_PYTHON=OFF -DGPU_TARGETS=gfx942 2>&1 | tee migraphx_build.log && break; \
+      [ "$$i" = 5 ] && exit 1; \
+      echo "Attempt $$i failed, retrying in 60s..." && sleep 60; \
+    done) && \
     cd build && \
     make -j$(nproc) package && dpkg -i *.deb
 
