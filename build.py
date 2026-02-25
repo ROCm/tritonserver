@@ -868,6 +868,38 @@ def tensorflow_cmake_args(images, library_paths):
 
     # If platform is jetpack do not use docker images
     extra_args = []
+    if FLAGS.enable_rocm:
+        extra_args.append(
+            cmake_backend_arg("tensorflow",
+                "TRITON_BUILD_ROCM_HOME",
+                None,
+                "/opt/rocm/"
+            )
+        )
+        extra_args.append(
+            cmake_backend_arg("tensorflow",
+                "TRITON_CORE_REPO_TAG",
+                None,
+                "add_migraphx_rocm_eps_hipify"
+            )
+        )
+        extra_args.append(
+            cmake_backend_arg("tensorflow",
+                "TRITON_BACKEND_REPO_TAG",
+                None,
+                "onnxbackend_dev"
+            )
+        )
+        extra_args.append(
+            cmake_backend_arg("tensorflow",
+                "TRITON_TENSORFLOW_DOCKER_IMAGE",
+                None,
+                "rocm/tensorflow:rocm7.2-py3.10-tf2.20-dev"
+                #"tritonserver_buildbase"
+            )
+        )
+        return extra_args
+
     if target_platform() == "jetpack":
         if backend_name in library_paths:
             extra_args = [
@@ -1740,11 +1772,15 @@ def create_build_dockerfiles(
                 base_image = "localhost/debian12_rocm7.2_vllm"
             elif "onnxruntime" in backends:
                 base_image = "localhost/debian12_rocm7.1_ort1.23_py310"
+            elif "tensorflow" in backends:
+                base_image = "rocm/tensorflow:rocm7.2-py3.10-tf2.20-dev"
             else:
                 base_image = "localhost/debian12_rocm7.2_vllm"
         else:
             if "onnxruntime" in backends:
                 base_image = "rocm/onnxruntime:rocm7.0_ub22.04_ort1.22_torch2.8.0"
+            elif "tensorflow" in backends:
+                base_image = "rocm/tensorflow:rocm7.2-py3.10-tf2.20-dev"
             else:
                 base_image = "rocm/pytorch:rocm7.1_ubuntu22.04_py3.10_pytorch_release_2.8.0"
     else:
@@ -2174,6 +2210,40 @@ def backend_build(
         cmake_script.cmd("sed -i \"s/CudaStream()/RocmStream()/\" /tmp/tritonbuild/onnxruntime_backend/src/onnxruntime.cc")
         cmake_script.comment()
         
+        cmake_script.cmake(
+            backend_cmake_args(images, components, be, repo_install_dir, library_paths)
+        )
+        cmake_script.makeinstall()
+
+        cmake_script.mkdir(os.path.join(install_dir, "backends"))
+        cmake_script.rmdir(os.path.join(install_dir, "backends", be))
+
+        cmake_script.cpdir(
+            os.path.join(repo_install_dir, "backends", be),
+            os.path.join(install_dir, "backends"),
+            )
+    elif be == "tensorflow" and FLAGS.enable_rocm:
+        
+        #cmake_script.gitclone(
+        #    "tensorflow-upstream",
+        #    "TRITONTF-hip",
+        #    "tensorflow-upstream",
+        #    "https://github.com/ROCm"
+        #)
+        #cmake_script.cwd("tensorflow-upstream")
+        #cmake_script.cmd("./build_rocm_python3", check_exitcode=True)
+        #cmake_script.cwd(build_dir)
+        #cmake_script.rmdir("tensorflow-upstream")
+
+        cmake_script.gitclone(
+            "triton-inference-server-tensorflow_backend", 
+            "hip-port", 
+            "tensorflow_backend", 
+            "https://github.com/ROCm"
+        )
+       
+        cmake_script.mkdir("tensorflow_backend/build")
+        cmake_script.cwd("tensorflow_backend/build")
         cmake_script.cmake(
             backend_cmake_args(images, components, be, repo_install_dir, library_paths)
         )
@@ -3083,7 +3153,8 @@ if __name__ == "__main__":
 
     # Initialize map of common components and repo-tag for each.
     if FLAGS.enable_rocm:
-        components = {
+         components = {
+            "backend": "onnxbackend_dev",
             "common": default_repo_tag,
             "core": "add_migraphx_rocm_eps_hipify",
             "backend": "onnxbackend_dev",

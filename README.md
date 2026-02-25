@@ -219,6 +219,43 @@ python3 build.py \
 - `--endpoint=grpc --endpoint=http`: Enable both HTTP and gRPC inference protocols
 - `--backend=onnxruntime`: Build with python backend
 
+## Build Triton Inference Server with tensorflow backend 
+
+### On Debian 12
+
+#### Prerequisites
+
+- Docker installed and running
+- AMD GPU with ROCm support
+- ROCm 7.2 or compatible version installed on the host
+
+The following instructions are for building on **Debian 12** with ROCm 7.2.
+
+Build the Triton Server with the tensorflow backend enabled:
+
+```bash
+git clone -b rocm_python_backend https://github.com/ROCm/triton-inference-server-server-legacy.git
+cd triton-inference-server-server
+python3 build.py \
+  --no-container-pull \
+  --enable-logging \
+  --enable-stats \
+  --enable-tracing \
+  --enable-rocm \
+  --enable-metrics \
+  --verbose \
+  --endpoint=grpc \
+  --endpoint=http \
+  --backend=tensorflow \
+  --linux-distro=debian \
+  --library-paths=../tensorflow_backend/
+```
+
+**Build Options Explained:**
+- `--enable-rocm`: Enable ROCm support
+- `--endpoint=grpc --endpoint=http`: Enable both HTTP and gRPC inference protocols
+- `--backend=tensorflow`: Build with tensorflow backend
+
 
 
 ## Run Triton Server

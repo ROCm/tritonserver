@@ -279,7 +279,13 @@ if(${TRITON_ENABLE_ROCM})
       NAMES hipify-perl
       HINTS
       ${TRITON_BUILD_ROCM_HOME}/bin
-      ${TRITON_BUILD_ROCM_HOME}/hip/bin)
+      ${TRITON_BUILD_ROCM_HOME}/hip/bin
+      ${TRITON_ROCM_HOME}/bin
+      ${TRITON_ROCM_HOME}/hip/bin
+      $ENV{ROCM_PATH}/bin
+      $ENV{ROCM_PATH}/hip/bin
+      $ENV{HIP_PATH}/bin
+      )
     if (HIPIFY_PERL_PATH-NOTFOUND)
       MESSAGE(FATAL_ERROR "hipify-perl not found")
     endif()
@@ -297,6 +303,15 @@ if(${TRITON_ENABLE_ROCM})
   auto_set_source_files_hip_language(triton_hipified_cu_srcs)
 
  # message(FATAL_ERROR "TEST")
+endif()
+
+# Prepare ROCm-specific cache args for ExternalProject
+set(_TRITON_ROCM_CACHE_ARGS "")
+if(${TRITON_ENABLE_ROCM})
+  list(APPEND _TRITON_ROCM_CACHE_ARGS
+    -DTRITON_HIPIFY_PERL:PATH=${TRITON_HIPIFY_PERL}
+    -DTRITON_BUILD_ROCM_HOME:PATH=${TRITON_ROCM_HOME}
+  )
 endif()
 
 ExternalProject_Add(triton-server
@@ -355,5 +370,6 @@ ExternalProject_Add(triton-server
     -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
     -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
     -DTRITON_VERSION:STRING=${TRITON_VERSION}
+    ${_TRITON_ROCM_CACHE_ARGS}
   DEPENDS ${TRITON_DEPENDS}
 )
